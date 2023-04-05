@@ -1465,17 +1465,25 @@ import {
 
 // src/tableview.ts
 var TableView = class {
-  constructor(node, cellMinWidth) {
+  constructor(node, cellMinWidth, wrapperClassNames) {
     this.node = node;
     this.cellMinWidth = cellMinWidth;
+    this.wrapperClassNames = wrapperClassNames;
     this.dom = document.createElement("div");
     this.dom.className = "tableWrapper";
+    wrapperClassNames.forEach((className) => this.dom.classList.add(className));
     this.table = this.dom.appendChild(document.createElement("table"));
+    this.table.className = node.attrs.class;
     this.colgroup = this.table.appendChild(document.createElement("colgroup"));
     updateColumnsOnResize(node, this.colgroup, this.table, cellMinWidth);
     this.contentDOM = this.table.appendChild(document.createElement("tbody"));
   }
   update(node) {
+    if (node.attrs !== this.node.attrs) {
+      this.node = node;
+      this.table.className = node.attrs.class;
+      return true;
+    }
     if (node.type != this.node.type)
       return false;
     this.node = node;
@@ -1533,13 +1541,14 @@ function columnResizing({
   handleWidth = 5,
   cellMinWidth = 25,
   View = TableView,
+  wrapperClassNames = [],
   lastColumnResizable = true
 } = {}) {
   const plugin = new Plugin({
     key: columnResizingPluginKey,
     state: {
       init(_, state) {
-        plugin.spec.props.nodeViews[tableNodeTypes(state.schema).table.name] = (node, view) => new View(node, cellMinWidth, view);
+        plugin.spec.props.nodeViews[tableNodeTypes(state.schema).table.name] = (node) => new View(node, cellMinWidth, wrapperClassNames);
         return new ResizeState(-1, false);
       },
       apply(tr, prev) {

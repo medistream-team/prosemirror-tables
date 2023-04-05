@@ -11,17 +11,28 @@ export class TableView implements NodeView {
   public colgroup: HTMLTableColElement;
   public contentDOM: HTMLTableSectionElement;
 
-  constructor(public node: Node, public cellMinWidth: number) {
+  constructor(public node: Node, public cellMinWidth: number, public wrapperClassNames: string[]) {
     this.dom = document.createElement('div');
     this.dom.className = 'tableWrapper';
+    wrapperClassNames.forEach((className) => this.dom.classList.add(className))
+    
     this.table = this.dom.appendChild(document.createElement('table'));
+    this.table.className = node.attrs.class;
+    
     this.colgroup = this.table.appendChild(document.createElement('colgroup'));
+    
     updateColumnsOnResize(node, this.colgroup, this.table, cellMinWidth);
+    
     this.contentDOM = this.table.appendChild(document.createElement('tbody'));
   }
 
   update(node: Node): boolean {
-    if (node.type != this.node.type) return false;
+    if (node.attrs !== this.node.attrs) {
+      this.node = node
+      this.table.className = node.attrs.class
+      return true
+    }
+    if (node.type != this.node.type) return false; 
     this.node = node;
     updateColumnsOnResize(node, this.colgroup, this.table, this.cellMinWidth);
     return true;

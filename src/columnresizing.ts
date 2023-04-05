@@ -25,10 +25,11 @@ export type ColumnResizingOptions = {
   handleWidth?: number;
   cellMinWidth?: number;
   lastColumnResizable?: boolean;
+  wrapperClassNames?: string[];
   View?: new (
     node: ProsemirrorNode,
     cellMinWidth: number,
-    view: EditorView,
+    wrapperClassNames: string[],
   ) => NodeView;
 };
 
@@ -44,6 +45,7 @@ export function columnResizing({
   handleWidth = 5,
   cellMinWidth = 25,
   View = TableView,
+  wrapperClassNames = [],
   lastColumnResizable = true,
 }: ColumnResizingOptions = {}): Plugin {
   const plugin = new Plugin<ResizeState>({
@@ -52,7 +54,7 @@ export function columnResizing({
       init(_, state) {
         plugin.spec!.props!.nodeViews![
           tableNodeTypes(state.schema).table.name
-        ] = (node, view) => new View(node, cellMinWidth, view);
+        ] = (node) => new View(node, cellMinWidth, wrapperClassNames);
         return new ResizeState(-1, false);
       },
       apply(tr, prev) {

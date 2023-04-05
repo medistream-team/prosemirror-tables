@@ -241,7 +241,8 @@ type ColumnResizingOptions = {
     handleWidth?: number;
     cellMinWidth?: number;
     lastColumnResizable?: boolean;
-    View?: new (node: Node, cellMinWidth: number, view: EditorView) => NodeView;
+    wrapperClassNames?: string[];
+    View?: new (node: Node, cellMinWidth: number, wrapperClassNames: string[]) => NodeView;
 };
 /**
  * @public
@@ -253,7 +254,7 @@ type Dragging = {
 /**
  * @public
  */
-declare function columnResizing({ handleWidth, cellMinWidth, View, lastColumnResizable, }?: ColumnResizingOptions): Plugin;
+declare function columnResizing({ handleWidth, cellMinWidth, View, wrapperClassNames, lastColumnResizable, }?: ColumnResizingOptions): Plugin;
 /**
  * @public
  */
@@ -527,11 +528,12 @@ declare function tableNodeTypes(schema: Schema): Record<TableRole, NodeType>;
 declare class TableView implements NodeView {
     node: Node;
     cellMinWidth: number;
+    wrapperClassNames: string[];
     dom: HTMLDivElement;
     table: HTMLTableElement;
     colgroup: HTMLTableColElement;
     contentDOM: HTMLTableSectionElement;
-    constructor(node: Node, cellMinWidth: number);
+    constructor(node: Node, cellMinWidth: number, wrapperClassNames: string[]);
     update(node: Node): boolean;
     ignoreMutation(record: MutationRecord): boolean;
 }
