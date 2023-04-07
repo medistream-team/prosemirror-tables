@@ -5,8 +5,8 @@ import 'prosemirror-gapcursor/style/gapcursor.css';
 import '../style/tables.css';
 
 import { EditorView } from 'prosemirror-view';
-import { EditorState } from 'prosemirror-state';
-import { DOMParser, Schema } from 'prosemirror-model';
+import { EditorState, TextSelection } from 'prosemirror-state';
+import { DOMParser, Fragment, Schema } from 'prosemirror-model';
 import { schema as baseSchema } from 'prosemirror-schema-basic';
 import { keymap } from 'prosemirror-keymap';
 import { exampleSetup, buildMenuItems } from 'prosemirror-example-setup';
@@ -29,6 +29,39 @@ import {
   deleteTable,
 } from '../src';
 import { tableEditing, columnResizing, tableNodes, fixTables } from '../src';
+
+const insertTable = (state: EditorState, dispatch?: () => void) => {
+  const offset = state.tr.selection.anchor + 1
+  const transaction = state.tr
+  const cell = state.schema.nodes.table_cell.create(
+    null,
+    Fragment.from(state.schema.nodes.paragraph.create()),
+  )
+  const node = state.schema.nodes.table.create(
+    null,
+    Fragment.fromArray([
+      state.schema.nodes.table_row.create(
+        null,
+        Fragment.fromArray([cell, cell]),
+      ),
+      state.schema.nodes.table_row.create(
+        null,
+        Fragment.fromArray([cell, cell]),
+      ),
+    ]),
+  )
+
+  if (dispatch) {
+    dispatch(
+      transaction
+        .replaceSelectionWith(node)
+        .scrollIntoView()
+        .setSelection(TextSelection.near(transaction.doc.resolve(offset))),
+    )
+  }
+
+  return true
+}
 
 const schema = new Schema({
   nodes: baseSchema.spec.nodes.append(
@@ -72,8 +105,8 @@ const tableMenu = [
   item('Make cell green', setCellAttr('background', '#dfd')),
   item('Make cell not-green', setCellAttr('background', null)),
 ];
-menu.splice(2, 0, [new Dropdown(tableMenu, { label: 'Table' })]);
-
+menu.splice(2, 0, [new Dropdown(tableMenu, { label: 'Table' })])
+menu.push([item('table', insertTable)]);
 const contentElement = document.querySelector('#content');
 if (!contentElement) {
   throw new Error('Failed to find #content');
@@ -83,8 +116,13 @@ const doc = DOMParser.fromSchema(schema).parse(contentElement);
 let state = EditorState.create({
   doc,
   plugins: [
-    columnResizing(),
-    tableEditing(),
+    columnResizing({
+      lastColumnResizable: false,
+      handleWidth: 10,
+      cellMinWidth: 20,
+      wrapperClassNames: ['lololo']
+    }),
+    tableEditing({allowTableNodeSelection: true}), // key binding 을 위해 tableEditing 을 마지막에 추가합니다.
     keymap({
       Tab: goToNextCell(1),
       'Shift-Tab': goToNextCell(-1),
