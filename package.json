@@ -1,6 +1,6 @@
 {
   "name": "@medistream/prosemirror-tables",
-  "version": "0.0.0-development",
+  "version": "0.0.2",
   "description": "ProseMirror's rowspan/colspan tables component",
   "type": "module",
   "main": "dist/index.cjs",
