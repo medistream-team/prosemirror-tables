@@ -6,7 +6,7 @@ import '../style/tables.css';
 
 import { EditorView } from 'prosemirror-view';
 import { EditorState } from 'prosemirror-state';
-import { DOMParser, Schema } from 'prosemirror-model';
+import { DOMParser, DOMSerializer, Schema } from 'prosemirror-model';
 import { schema as baseSchema } from 'prosemirror-schema-basic';
 import { keymap } from 'prosemirror-keymap';
 import { exampleSetup, buildMenuItems } from 'prosemirror-example-setup';
@@ -36,6 +36,14 @@ const schema = new Schema({
       tableGroup: 'block',
       cellContent: 'block+',
       cellAttributes: {
+        class: {
+          default: 'preview cell',
+          setDOMAttr: (value, attrs) => {
+            if (value) {
+              attrs.class = value
+            }
+          },
+        },
         background: {
           default: null,
           getFromDOM(dom) {
@@ -83,7 +91,10 @@ const doc = DOMParser.fromSchema(schema).parse(contentElement);
 let state = EditorState.create({
   doc,
   plugins: [
-    columnResizing(),
+    columnResizing({
+      wrapperClassNames: ['table-wrapper-cn'],
+      lastColumnResizable: false
+    }),
     tableEditing(),
     keymap({
       Tab: goToNextCell(1),
@@ -99,9 +110,28 @@ let state = EditorState.create({
 const fix = fixTables(state);
 if (fix) state = state.apply(fix.setMeta('addToHistory', false));
 
-(window as any).view = new EditorView(document.querySelector('#editor'), {
+
+const view = new EditorView(document.querySelector('#editor'), {
   state,
+  dispatchTransaction(transaction) {
+    const newState = view.state.apply(transaction);
+    view.updateState(newState);
+    const serializer = DOMSerializer.fromSchema(schema)
+    const html = serializer.serializeFragment(newState.doc.content)
+    const preview = document.querySelector('#preview')
+    if (preview) {
+      preview.innerHTML = ''
+      preview.append(html)
+    }
+  }
 });
+(window as any).view = view
+const serializer = DOMSerializer.fromSchema(schema)
+const html = serializer.serializeFragment(state.doc.content)
+const preview = document.querySelector('#preview')
+if (preview) {
+  preview.append(html)
+}
 
 document.execCommand('enableObjectResizing', false, 'false');
 document.execCommand('enableInlineTableEditing', false, 'false');
