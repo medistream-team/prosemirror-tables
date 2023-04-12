@@ -363,8 +363,35 @@ function tableNodes(options) {
       isolating: true,
       group: options.tableGroup,
       parseDOM: [{ tag: "table" }],
-      toDOM() {
-        return ["table", ["tbody", 0]];
+      toDOM(node) {
+        var _a;
+        const dataCols = ((_a = node.attrs["data-cols"]) == null ? void 0 : _a.split(",")) || [];
+        const cols = dataCols.map((width) => {
+          if (width > 0) {
+            return ["col", { style: `width: ${width}px;` }];
+          }
+          return ["col"];
+        });
+        return [
+          "div",
+          {
+            style: "overflow-x: scroll;"
+          },
+          [
+            "table",
+            __spreadValues({
+              class: node.attrs.class,
+              "data-cols": node.attrs["data-cols"]
+            }, node.attrs),
+            ["colgroup", ...cols],
+            ["tbody", 0]
+          ]
+        ];
+      },
+      attrs: {
+        "data-cols": {
+          default: null
+        }
       }
     },
     table_row: {
@@ -1502,6 +1529,8 @@ function updateColumnsOnResize(node, colgroup, table, cellMinWidth, overrideCol,
   const row = node.firstChild;
   if (!row)
     return;
+  let colWidthTotal = 0;
+  let countColWidth = 0;
   for (let i = 0, col = 0; i < row.childCount; i++) {
     const { colspan, colwidth } = row.child(i).attrs;
     for (let j = 0; j < colspan; j++, col++) {
@@ -1513,11 +1542,26 @@ function updateColumnsOnResize(node, colgroup, table, cellMinWidth, overrideCol,
       if (!nextDOM) {
         colgroup.appendChild(document.createElement("col")).style.width = cssWidth;
       } else {
-        if (nextDOM.style.width != cssWidth)
+        if (nextDOM.style.width != cssWidth) {
           nextDOM.style.width = cssWidth;
+        }
+        if (nextDOM.style.width) {
+          colWidthTotal += parseFloat(nextDOM.style.width);
+          countColWidth++;
+        }
         nextDOM = nextDOM.nextSibling;
       }
     }
+  }
+  if (colWidthTotal > 0 && countColWidth > 0) {
+    const restColWidth = (table.offsetWidth - colWidthTotal - 1) / (colgroup.childNodes.length - countColWidth);
+    colgroup.childNodes.forEach((child) => {
+      if (child instanceof HTMLTableColElement) {
+        if (child.style.width === "") {
+          child.style.width = `${restColWidth}px`;
+        }
+      }
+    });
   }
   while (nextDOM) {
     const after = nextDOM.nextSibling;
@@ -1644,10 +1688,30 @@ function handleMouseLeave(view) {
   if (pluginState && pluginState.activeHandle > -1 && !pluginState.dragging)
     updateHandle(view, -1);
 }
+function getNewDataCols(table, view) {
+  const tableNode = view.state.doc.nodeAt(table - 1);
+  if ((tableNode == null ? void 0 : tableNode.attrs["data-cols"]) === null)
+    return;
+  const tableDOM = view.domAtPos(table).node.closest("table");
+  const colgroup = tableDOM.querySelector("colgroup");
+  const cols = [];
+  Array.from(colgroup.children).forEach((child) => {
+    if (child instanceof HTMLTableColElement) {
+      if (child.style.width && child.style.width !== "0px") {
+        const width = parseFloat(child.style.width);
+        cols.push(Math.floor(width));
+      } else {
+        cols.push(0);
+      }
+    }
+  });
+  return { pos: table, cols: cols.join(",") };
+}
 function handleMouseDown2(view, event, cellMinWidth) {
   const pluginState = columnResizingPluginKey.getState(view.state);
   if (!pluginState || pluginState.activeHandle == -1 || pluginState.dragging)
     return false;
+  const tableDOM = event.target.closest("table");
   const cell = view.state.doc.nodeAt(pluginState.activeHandle);
   const width = currentColWidth(view, pluginState.activeHandle, cell.attrs);
   view.dispatch(
@@ -1658,6 +1722,19 @@ function handleMouseDown2(view, event, cellMinWidth) {
   function finish(event2) {
     window.removeEventListener("mouseup", finish);
     window.removeEventListener("mousemove", move);
+    const colgroup = tableDOM.querySelector("colgroup");
+    const cols = [];
+    Array.from(colgroup.children).forEach((child) => {
+      if (child instanceof HTMLTableColElement) {
+        if (child.style.width && child.style.width !== "0px") {
+          const width2 = parseFloat(child.style.width);
+          cols.push(Math.floor(width2));
+        } else {
+          cols.push(0);
+        }
+      }
+    });
+    view.dispatch(view.state.tr.setNodeAttribute(view.posAtDOM(tableDOM, 0) - 1, "data-cols", cols.join(",")));
     const pluginState2 = columnResizingPluginKey.getState(view.state);
     if (pluginState2 == null ? void 0 : pluginState2.dragging) {
       updateColumnWidth(
@@ -1837,21 +1914,31 @@ function addColumn(tr, { map, tableStart, table }, col) {
   }
   return tr;
 }
-function addColumnBefore(state, dispatch) {
+function addColumnBefore(state, dispatch, view) {
   if (!isInTable(state))
     return false;
-  if (dispatch) {
+  if (dispatch && view) {
     const rect = selectedRect(state);
-    dispatch(addColumn(state.tr, rect, rect.left));
+    const tr = addColumn(state.tr, rect, rect.left);
+    dispatch(tr);
+    const result = getNewDataCols(rect.tableStart, view);
+    if (result) {
+      view.dispatch(view.state.tr.setNodeAttribute(result.pos - 1, "data-cols", result.cols));
+    }
   }
   return true;
 }
-function addColumnAfter(state, dispatch) {
+function addColumnAfter(state, dispatch, view) {
   if (!isInTable(state))
     return false;
-  if (dispatch) {
+  if (dispatch && view) {
     const rect = selectedRect(state);
-    dispatch(addColumn(state.tr, rect, rect.right));
+    const tr = addColumn(state.tr, rect, rect.right);
+    dispatch(tr);
+    const result = getNewDataCols(rect.tableStart, view);
+    if (result) {
+      view.dispatch(view.state.tr.setNodeAttribute(result.pos - 1, "data-cols", result.cols));
+    }
   }
   return true;
 }
@@ -1875,10 +1962,10 @@ function removeColumn(tr, { map, table, tableStart }, col) {
     row += attrs.rowspan;
   }
 }
-function deleteColumn(state, dispatch) {
+function deleteColumn(state, dispatch, view) {
   if (!isInTable(state))
     return false;
-  if (dispatch) {
+  if (dispatch && view) {
     const rect = selectedRect(state);
     const tr = state.tr;
     if (rect.left == 0 && rect.right == rect.map.width)
@@ -1895,6 +1982,10 @@ function deleteColumn(state, dispatch) {
       rect.map = TableMap.get(table);
     }
     dispatch(tr);
+    const result = getNewDataCols(rect.tableStart, view);
+    if (result) {
+      view.dispatch(view.state.tr.setNodeAttribute(result.pos - 1, "data-cols", result.cols));
+    }
   }
   return true;
 }

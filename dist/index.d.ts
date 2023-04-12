@@ -292,13 +292,13 @@ declare function addColumn(tr: Transaction, { map, tableStart, table }: TableRec
  *
  * @public
  */
-declare function addColumnBefore(state: EditorState, dispatch?: (tr: Transaction) => void): boolean;
+declare function addColumnBefore(state: EditorState, dispatch?: (tr: Transaction) => void, view?: EditorView): boolean;
 /**
  * Command to add a column after the column with the selection.
  *
  * @public
  */
-declare function addColumnAfter(state: EditorState, dispatch?: (tr: Transaction) => void): boolean;
+declare function addColumnAfter(state: EditorState, dispatch?: (tr: Transaction) => void, view?: EditorView): boolean;
 /**
  * @public
  */
@@ -308,7 +308,7 @@ declare function removeColumn(tr: Transaction, { map, table, tableStart }: Table
  *
  * @public
  */
-declare function deleteColumn(state: EditorState, dispatch?: (tr: Transaction) => void): boolean;
+declare function deleteColumn(state: EditorState, dispatch?: (tr: Transaction) => void, view?: EditorView): boolean;
 /**
  * @public
  */
