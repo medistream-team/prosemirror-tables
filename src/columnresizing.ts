@@ -1,4 +1,4 @@
-import { Attrs, Node as ProsemirrorNode } from 'prosemirror-model';
+import { Attrs, Node, Node as ProsemirrorNode } from 'prosemirror-model';
 import { EditorState, Plugin, PluginKey, Transaction } from 'prosemirror-state';
 import {
   Decoration,
@@ -173,6 +173,28 @@ function handleMouseLeave(view: EditorView): void {
     updateHandle(view, -1);
 }
 
+/**
+ * returns the widths of every column in the table
+ */
+export function getNewDataCols(table: number, view: EditorView) {
+    const tableNode = view.state.doc.nodeAt(table - 1)
+    if (tableNode?.attrs['data-cols'] === null) return
+    const tableDOM = (view.domAtPos(table).node as HTMLElement).closest('table')!
+    const colgroup = tableDOM.querySelector('colgroup')!
+    const cols: number[] = []
+    Array.from(colgroup.children).forEach((child) => {
+      if (child instanceof HTMLTableColElement) {
+        if (child.style.width && child.style.width !== '0px') {
+          const width = parseFloat(child.style.width)
+          cols.push(Math.floor(width))
+        } else {
+          cols.push(0)
+        }
+      }
+    })
+    return { pos: table, cols: cols.join(',')}
+}
+
 function handleMouseDown(
   view: EditorView,
   event: MouseEvent,
@@ -182,6 +204,7 @@ function handleMouseDown(
   if (!pluginState || pluginState.activeHandle == -1 || pluginState.dragging)
     return false;
 
+  const tableDOM = (event.target as HTMLElement).closest('table')!;
   const cell = view.state.doc.nodeAt(pluginState.activeHandle)!;
   const width = currentColWidth(view, pluginState.activeHandle, cell.attrs);
   view.dispatch(
@@ -193,6 +216,22 @@ function handleMouseDown(
   function finish(event: MouseEvent) {
     window.removeEventListener('mouseup', finish);
     window.removeEventListener('mousemove', move);
+    
+    // set widths of col elements on mouseup event.
+    const colgroup = tableDOM.querySelector('colgroup') as HTMLTableColElement
+    const cols: number[] = []
+    Array.from(colgroup.children).forEach((child) => {
+      if (child instanceof HTMLTableColElement) {
+        if (child.style.width && child.style.width !== '0px') {
+          const width = parseFloat(child.style.width)
+          cols.push(Math.floor(width))
+        } else {
+          cols.push(0)
+        }
+      }
+    })
+    view.dispatch(view.state.tr.setNodeAttribute(view.posAtDOM(tableDOM, 0) - 1, 'data-cols', cols.join(',')))
+    
     const pluginState = columnResizingPluginKey.getState(view.state);
     if (pluginState?.dragging) {
       updateColumnWidth(

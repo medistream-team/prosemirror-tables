@@ -23,6 +23,8 @@ import {
   removeColSpan,
   selectionCell,
 } from './util';
+import { getNewDataCols } from './columnresizing';
+import { EditorView } from 'prosemirror-view';
 
 /**
  * @public
@@ -104,11 +106,17 @@ export function addColumn(
 export function addColumnBefore(
   state: EditorState,
   dispatch?: (tr: Transaction) => void,
+  view?: EditorView
 ): boolean {
   if (!isInTable(state)) return false;
-  if (dispatch) {
+  if (dispatch && view) {
     const rect = selectedRect(state);
-    dispatch(addColumn(state.tr, rect, rect.left));
+    const tr = addColumn(state.tr, rect, rect.left);
+    dispatch(tr)
+    const result = getNewDataCols(rect.tableStart, view)
+    if (result) {
+      view.dispatch(view.state.tr.setNodeAttribute(result.pos - 1, 'data-cols', result.cols))
+    }
   }
   return true;
 }
@@ -121,11 +129,17 @@ export function addColumnBefore(
 export function addColumnAfter(
   state: EditorState,
   dispatch?: (tr: Transaction) => void,
-): boolean {
+  view?: EditorView
+  ): boolean {
   if (!isInTable(state)) return false;
-  if (dispatch) {
+  if (dispatch && view) {
     const rect = selectedRect(state);
-    dispatch(addColumn(state.tr, rect, rect.right));
+    const tr = addColumn(state.tr, rect, rect.right)
+    dispatch(tr)
+    const result = getNewDataCols(rect.tableStart, view)
+    if (result) {
+      view.dispatch(view.state.tr.setNodeAttribute(result.pos - 1, 'data-cols', result.cols))
+    }
   }
   return true;
 }
@@ -170,9 +184,10 @@ export function removeColumn(
 export function deleteColumn(
   state: EditorState,
   dispatch?: (tr: Transaction) => void,
+  view?: EditorView
 ): boolean {
   if (!isInTable(state)) return false;
-  if (dispatch) {
+  if (dispatch && view) {
     const rect = selectedRect(state);
     const tr = state.tr;
     if (rect.left == 0 && rect.right == rect.map.width) return false;
@@ -189,6 +204,10 @@ export function deleteColumn(
       rect.map = TableMap.get(table);
     }
     dispatch(tr);
+    const result = getNewDataCols(rect.tableStart, view)
+    if (result) {
+      view.dispatch(view.state.tr.setNodeAttribute(result.pos - 1, 'data-cols', result.cols))
+    }
   }
   return true;
 }

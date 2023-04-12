@@ -63,6 +63,9 @@ export function updateColumnsOnResize(
   const row = node.firstChild;
   if (!row) return;
 
+  let colWidthTotal = 0
+  let countColWidth = 0
+  
   for (let i = 0, col = 0; i < row.childCount; i++) {
     const { colspan, colwidth } = row.child(i).attrs as CellAttrs;
     for (let j = 0; j < colspan; j++, col++) {
@@ -73,14 +76,32 @@ export function updateColumnsOnResize(
       if (!hasWidth) fixedWidth = false;
       if (!nextDOM) {
         colgroup.appendChild(document.createElement('col')).style.width =
-          cssWidth;
+        cssWidth;
       } else {
-        if (nextDOM.style.width != cssWidth) nextDOM.style.width = cssWidth;
+        if (nextDOM.style.width != cssWidth) {
+          nextDOM.style.width = cssWidth;
+        }
+        if (nextDOM.style.width) {
+          colWidthTotal += parseFloat(nextDOM.style.width)
+          countColWidth++
+        }
         nextDOM = nextDOM.nextSibling as HTMLElement;
       }
     }
   }
 
+  // 다시 한 번 colgroup 을 순회하면서 넓이가 없는 col 의 넓이를 계산해서 넣어준다.
+  if (colWidthTotal > 0 && countColWidth > 0) {
+    const restColWidth = (table.offsetWidth - colWidthTotal - 1) / (colgroup.childNodes.length - countColWidth)
+    colgroup.childNodes.forEach((child) => {
+      if (child instanceof HTMLTableColElement) {
+        if (child.style.width === '') {
+          child.style.width = `${restColWidth}px`
+        }
+      }
+    })
+  }
+    
   while (nextDOM) {
     const after = nextDOM.nextSibling;
     nextDOM.parentNode?.removeChild(nextDOM);

@@ -136,9 +136,36 @@ export function tableNodes(options: TableNodesOptions): TableNodes {
       isolating: true,
       group: options.tableGroup,
       parseDOM: [{ tag: 'table' }],
-      toDOM() {
-        return ['table', ['tbody', 0]];
+      toDOM(node) {
+        const dataCols = (node.attrs['data-cols']?.split(',') || []) as number[];
+        const cols = dataCols.map((width) => {
+          if (width > 0) {
+            return ['col', { style: `width: ${width}px;` }]
+          }
+          return ['col']
+        })
+        return [
+          'div',
+          { 
+            style: 'overflow-x: scroll;'
+          },
+          [
+            'table',
+            {
+              class: node.attrs.class,
+              'data-cols': node.attrs['data-cols'],
+              ...node.attrs,
+            },
+            ['colgroup', ...cols],
+            ['tbody', 0]
+          ]
+        ];
       },
+      attrs: {
+        'data-cols': {
+          default: null
+        }
+      }
     },
     table_row: {
       content: '(table_cell | table_header)*',
