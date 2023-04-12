@@ -147,7 +147,7 @@ export function tableNodes(options: TableNodesOptions): TableNodes {
         return [
           'div',
           { 
-            style: 'overflow-x: scroll;'
+            style: 'overflow-x: auto;'
           },
           [
             'table',
