@@ -375,7 +375,7 @@ function tableNodes(options) {
         return [
           "div",
           {
-            style: "overflow-x: scroll;"
+            style: "overflow-x: auto;"
           },
           [
             "table",
