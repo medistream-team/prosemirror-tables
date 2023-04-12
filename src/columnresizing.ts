@@ -364,7 +364,7 @@ function displayColumnWidth(
     TableMap.get(table).colCount($cell.pos - start) +
     $cell.nodeAfter!.attrs.colspan -
     1;
-  let dom: Node | null = view.domAtPos($cell.start(-1)).node;
+  let dom: globalThis.Node | null = view.domAtPos($cell.start(-1)).node;
   while (dom && dom.nodeName != 'TABLE') {
     dom = dom.parentNode;
   }
