@@ -309,7 +309,11 @@ function updateColumnWidth(
     colwidth[index] = width;
     tr.setNodeMarkup(start + pos, null, { ...attrs, colwidth: colwidth });
   }
-  if (tr.docChanged) view.dispatch(tr);
+  if (tr.docChanged) {
+    const tableDOMOffsetWidth = (view.domAtPos(start).node as HTMLElement).closest('table')!.offsetWidth - 1
+    view.dispatch(tr);
+    view.dispatch(view.state.tr.setNodeAttribute(start - 1, 'width', tableDOMOffsetWidth).setMeta('addToHistory', false))
+  }
 }
 
 function displayColumnWidth(
