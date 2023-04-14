@@ -376,9 +376,9 @@ function tableNodes(options) {
           },
           [
             "table",
-            {
+            __spreadProps(__spreadValues({}, node.attrs), {
               style: node.attrs.width ? `width: ${node.attrs.width}px;` : ""
-            },
+            }),
             ["tbody", 0]
           ]
         ];
