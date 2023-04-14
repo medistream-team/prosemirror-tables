@@ -428,10 +428,27 @@ function tableNodes(options) {
       content: "table_row+",
       tableRole: "table",
       isolating: true,
+      attrs: {
+        width: {
+          default: null
+        }
+      },
       group: options.tableGroup,
       parseDOM: [{ tag: "table" }],
-      toDOM() {
-        return ["table", ["tbody", 0]];
+      toDOM(node) {
+        return [
+          "div",
+          {
+            style: "overflow-x: auto;"
+          },
+          [
+            "table",
+            {
+              style: node.attrs.width ? `width: ${node.attrs.width}px;` : ""
+            },
+            ["tbody", 0]
+          ]
+        ];
       }
     },
     table_row: {
@@ -1809,8 +1826,11 @@ function updateColumnWidth(view, cell, width) {
     colwidth[index] = width;
     tr.setNodeMarkup(start + pos, null, __spreadProps(__spreadValues({}, attrs), { colwidth }));
   }
-  if (tr.docChanged)
+  if (tr.docChanged) {
+    const tableDOMOffsetWidth = view.domAtPos(start).node.closest("table").offsetWidth - 1;
     view.dispatch(tr);
+    view.dispatch(view.state.tr.setNodeAttribute(start - 1, "width", tableDOMOffsetWidth).setMeta("addToHistory", false));
+  }
 }
 function displayColumnWidth(view, cell, width, cellMinWidth) {
   const $cell = view.state.doc.resolve(cell);
