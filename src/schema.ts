@@ -150,6 +150,7 @@ export function tableNodes(options: TableNodesOptions): TableNodes {
           [
             'table',
             {
+              ...node.attrs,
               style: node.attrs.width ? `width: ${node.attrs.width}px;` : '',
             },
             ['tbody', 0]
