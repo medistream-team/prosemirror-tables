@@ -5,8 +5,8 @@ import 'prosemirror-gapcursor/style/gapcursor.css';
 import '../style/tables.css';
 
 import { EditorView } from 'prosemirror-view';
-import { EditorState, TextSelection } from 'prosemirror-state';
-import { DOMParser, Fragment, Schema } from 'prosemirror-model';
+import { EditorState, TextSelection, Transaction } from 'prosemirror-state';
+import { DOMParser, DOMSerializer, Fragment, Schema } from 'prosemirror-model';
 import { schema as baseSchema } from 'prosemirror-schema-basic';
 import { keymap } from 'prosemirror-keymap';
 import { exampleSetup, buildMenuItems } from 'prosemirror-example-setup';
@@ -30,7 +30,7 @@ import {
 } from '../src';
 import { tableEditing, columnResizing, tableNodes, fixTables } from '../src';
 
-const insertTable = (state: EditorState, dispatch?: () => void) => {
+const insertTable = (state: EditorState, dispatch?: (fn: Transaction) => void) => {
   const offset = state.tr.selection.anchor + 1
   const transaction = state.tr
   const cell = state.schema.nodes.table_cell.create(
@@ -79,6 +79,15 @@ const schema = new Schema({
               attrs.style = (attrs.style || '') + `background-color: ${value};`;
           },
         },
+        style: {
+          default: null,
+          setDOMAttr: (value, attrs) => {
+            if (attrs['data-colwidth']) {
+              attrs.style =
+                (attrs.style || '') + `width: ${attrs['data-colwidth']}px;`
+            }
+          },
+        },
       },
     }),
   ),
@@ -117,7 +126,7 @@ let state = EditorState.create({
   doc,
   plugins: [
     columnResizing({
-      lastColumnResizable: false,
+      lastColumnResizable: true,
       handleWidth: 10,
       cellMinWidth: 20,
       wrapperClassNames: ['lololo']
@@ -138,9 +147,27 @@ let state = EditorState.create({
 const fix = fixTables(state);
 if (fix) state = state.apply(fix.setMeta('addToHistory', false));
 
-(window as any).view = new EditorView(document.querySelector('#editor'), {
+const view = new EditorView(document.querySelector('#editor'), {
   state,
+  dispatchTransaction(transaction) {
+    const newState = view.state.apply(transaction);
+    view.updateState(newState);
+    const serializer = DOMSerializer.fromSchema(schema)
+    const html = serializer.serializeFragment(newState.doc.content)
+    const preview = document.querySelector('#preview')
+    if (preview) {
+      preview.innerHTML = ''
+      preview.append(html)
+    }
+  }
 });
+(window as any).view = view
+const serializer = DOMSerializer.fromSchema(schema)
+const html = serializer.serializeFragment(state.doc.content)
+const preview = document.querySelector('#preview')
+if (preview) {
+  preview.append(html)
+}
 
 document.execCommand('enableObjectResizing', false, 'false');
 document.execCommand('enableInlineTableEditing', false, 'false');
