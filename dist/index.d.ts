@@ -242,7 +242,7 @@ type ColumnResizingOptions = {
     cellMinWidth?: number;
     lastColumnResizable?: boolean;
     wrapperClassNames?: string[];
-    View?: new (node: Node, cellMinWidth: number, wrapperClassNames: string[]) => NodeView;
+    View?: new (node: Node, cellMinWidth: number, wrapperClassNames: string[], view: EditorView, getPos: () => number | undefined) => NodeView;
 };
 /**
  * @public
@@ -529,11 +529,13 @@ declare class TableView implements NodeView {
     node: Node;
     cellMinWidth: number;
     wrapperClassNames: string[];
+    view: EditorView;
+    getPos: () => number | undefined;
     dom: HTMLDivElement;
     table: HTMLTableElement;
     colgroup: HTMLTableColElement;
     contentDOM: HTMLTableSectionElement;
-    constructor(node: Node, cellMinWidth: number, wrapperClassNames: string[]);
+    constructor(node: Node, cellMinWidth: number, wrapperClassNames: string[], view: EditorView, getPos: () => number | undefined);
     update(node: Node): boolean;
     ignoreMutation(record: MutationRecord): boolean;
 }
