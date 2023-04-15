@@ -137,6 +137,9 @@ export function tableNodes(options: TableNodesOptions): TableNodes {
       attrs: {
         width: {
           default: null,
+        },
+        defaultWidth: {
+          default: null,
         }
       },
       group: options.tableGroup,

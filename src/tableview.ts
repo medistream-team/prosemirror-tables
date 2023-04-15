@@ -1,5 +1,5 @@
 import { Node } from 'prosemirror-model';
-import { NodeView } from 'prosemirror-view';
+import { EditorView, NodeView } from 'prosemirror-view';
 import { CellAttrs } from './util';
 
 /**
@@ -11,7 +11,10 @@ export class TableView implements NodeView {
   public colgroup: HTMLTableColElement;
   public contentDOM: HTMLTableSectionElement;
 
-  constructor(public node: Node, public cellMinWidth: number, public wrapperClassNames: string[]) {
+  constructor(public node: Node, public cellMinWidth: number, public wrapperClassNames: string[], public view: EditorView, public getPos: () => number|undefined) {
+    this.view = view;
+    this.getPos = getPos;
+    
     this.dom = document.createElement('div');
     this.dom.className = 'tableWrapper';
     wrapperClassNames.forEach((className) => this.dom.classList.add(className))
@@ -24,6 +27,11 @@ export class TableView implements NodeView {
     updateColumnsOnResize(node, this.colgroup, this.table, cellMinWidth);
     
     this.contentDOM = this.table.appendChild(document.createElement('tbody'));
+
+    setTimeout(() => {
+      this.view.dispatch(this.view.state.tr.setNodeAttribute(this.getPos()!, 'defaultWidth', this.table.offsetWidth).setMeta('addToHistory', false))
+    }, 0)
+    
   }
 
   update(node: Node): boolean {
