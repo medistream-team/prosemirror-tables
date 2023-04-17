@@ -140,6 +140,9 @@ export function tableNodes(options: TableNodesOptions): TableNodes {
         },
         defaultWidth: {
           default: null,
+        },
+        layout: {
+          default: 'auto'
         }
       },
       group: options.tableGroup,

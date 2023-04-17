@@ -324,8 +324,8 @@ function updateColumnWidth(
      * 이는 모바일에서 불필요하게 테이블을 좌우 스크롤해야 하는 문제를 야기했습니다.
      */
     defaultTableWidth >= resizedTableWidth
-      ? view.dispatch(view.state.tr.setNodeAttribute(start - 1, 'width', null).setMeta('addToHistory', false))
-      : view.dispatch(view.state.tr.setNodeAttribute(start - 1, 'width', resizedTableWidth).setMeta('addToHistory', false))
+      ? view.dispatch(view.state.tr.setNodeAttribute(start - 1, 'width', null).setNodeAttribute(start - 1, 'layout', 'auto').setMeta('addToHistory', false))
+      : view.dispatch(view.state.tr.setNodeAttribute(start - 1, 'width', resizedTableWidth).setNodeAttribute(start - 1, 'layout', 'fixed').setMeta('addToHistory', false))
   }
 }
 
