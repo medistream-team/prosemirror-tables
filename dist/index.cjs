@@ -434,6 +434,9 @@ function tableNodes(options) {
         },
         defaultWidth: {
           default: null
+        },
+        layout: {
+          default: "auto"
         }
       },
       group: options.tableGroup,
@@ -1840,7 +1843,7 @@ function updateColumnWidth(view, cell, width) {
     const defaultTableWidth = table.attrs.defaultWidth || 0;
     const resizedTableWidth = view.domAtPos(start).node.closest("table").offsetWidth - 1;
     view.dispatch(tr);
-    defaultTableWidth >= resizedTableWidth ? view.dispatch(view.state.tr.setNodeAttribute(start - 1, "width", null).setMeta("addToHistory", false)) : view.dispatch(view.state.tr.setNodeAttribute(start - 1, "width", resizedTableWidth).setMeta("addToHistory", false));
+    defaultTableWidth >= resizedTableWidth ? view.dispatch(view.state.tr.setNodeAttribute(start - 1, "width", null).setNodeAttribute(start - 1, "layout", "auto").setMeta("addToHistory", false)) : view.dispatch(view.state.tr.setNodeAttribute(start - 1, "width", resizedTableWidth).setNodeAttribute(start - 1, "layout", "fixed").setMeta("addToHistory", false));
   }
 }
 function displayColumnWidth(view, cell, width, cellMinWidth) {
