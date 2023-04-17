@@ -30,6 +30,8 @@ export type ColumnResizingOptions = {
     node: ProsemirrorNode,
     cellMinWidth: number,
     wrapperClassNames: string[],
+    view: EditorView,
+    getPos: () => number | undefined,
   ) => NodeView;
 };
 
@@ -54,7 +56,7 @@ export function columnResizing({
       init(_, state) {
         plugin.spec!.props!.nodeViews![
           tableNodeTypes(state.schema).table.name
-        ] = (node) => new View(node, cellMinWidth, wrapperClassNames);
+        ] = (node, view, getPos) => new View(node, cellMinWidth, wrapperClassNames, view, getPos);
         return new ResizeState(-1, false);
       },
       apply(tr, prev) {
@@ -309,7 +311,22 @@ function updateColumnWidth(
     colwidth[index] = width;
     tr.setNodeMarkup(start + pos, null, { ...attrs, colwidth: colwidth });
   }
-  if (tr.docChanged) view.dispatch(tr);
+  if (tr.docChanged) {
+    const defaultTableWidth: number = table.attrs.defaultWidth || 0
+    const resizedTableWidth = (view.domAtPos(start).node as HTMLElement).closest('table')!.offsetWidth - 1
+    
+    view.dispatch(tr);
+    
+    /**
+     * 테이블의 넓이가 기본값 보다 커지지 않는 이상 테이블의 넓이를 고정하지 않습니다.
+     * 
+     * 기존의 로직은 컬럼의 넓이를 한 번이라도 변경하면 테이블의 넓이가 고정되었는데,
+     * 이는 모바일에서 불필요하게 테이블을 좌우 스크롤해야 하는 문제를 야기했습니다.
+     */
+    defaultTableWidth >= resizedTableWidth
+      ? view.dispatch(view.state.tr.setNodeAttribute(start - 1, 'width', null).setNodeAttribute(start - 1, 'data-layout', 'auto').setMeta('addToHistory', false))
+      : view.dispatch(view.state.tr.setNodeAttribute(start - 1, 'width', resizedTableWidth).setNodeAttribute(start - 1, 'data-layout', 'fixed').setMeta('addToHistory', false))
+  }
 }
 
 function displayColumnWidth(

@@ -5,8 +5,8 @@ import 'prosemirror-gapcursor/style/gapcursor.css';
 import '../style/tables.css';
 
 import { EditorView } from 'prosemirror-view';
-import { EditorState } from 'prosemirror-state';
-import { DOMParser, Schema } from 'prosemirror-model';
+import { EditorState, TextSelection, Transaction } from 'prosemirror-state';
+import { DOMParser, DOMSerializer, Fragment, Schema } from 'prosemirror-model';
 import { schema as baseSchema } from 'prosemirror-schema-basic';
 import { keymap } from 'prosemirror-keymap';
 import { exampleSetup, buildMenuItems } from 'prosemirror-example-setup';
@@ -30,6 +30,39 @@ import {
 } from '../src';
 import { tableEditing, columnResizing, tableNodes, fixTables } from '../src';
 
+const insertTable = (state: EditorState, dispatch?: (fn: Transaction) => void) => {
+  const offset = state.tr.selection.anchor + 1
+  const transaction = state.tr
+  const cell = state.schema.nodes.table_cell.create(
+    null,
+    Fragment.from(state.schema.nodes.paragraph.create()),
+  )
+  const node = state.schema.nodes.table.create(
+    null,
+    Fragment.fromArray([
+      state.schema.nodes.table_row.create(
+        null,
+        Fragment.fromArray([cell, cell]),
+      ),
+      state.schema.nodes.table_row.create(
+        null,
+        Fragment.fromArray([cell, cell]),
+      ),
+    ]),
+  )
+
+  if (dispatch) {
+    dispatch(
+      transaction
+        .replaceSelectionWith(node)
+        .scrollIntoView()
+        .setSelection(TextSelection.near(transaction.doc.resolve(offset))),
+    )
+  }
+
+  return true
+}
+
 const schema = new Schema({
   nodes: baseSchema.spec.nodes.append(
     tableNodes({
@@ -44,6 +77,15 @@ const schema = new Schema({
           setDOMAttr(value, attrs) {
             if (value)
               attrs.style = (attrs.style || '') + `background-color: ${value};`;
+          },
+        },
+        style: {
+          default: null,
+          setDOMAttr: (value, attrs) => {
+            if (attrs['data-colwidth']) {
+              attrs.style =
+                (attrs.style || '') + `width: ${attrs['data-colwidth']}px;`
+            }
           },
         },
       },
@@ -72,8 +114,8 @@ const tableMenu = [
   item('Make cell green', setCellAttr('background', '#dfd')),
   item('Make cell not-green', setCellAttr('background', null)),
 ];
-menu.splice(2, 0, [new Dropdown(tableMenu, { label: 'Table' })]);
-
+menu.splice(2, 0, [new Dropdown(tableMenu, { label: 'Table' })])
+menu.push([item('table', insertTable)]);
 const contentElement = document.querySelector('#content');
 if (!contentElement) {
   throw new Error('Failed to find #content');
@@ -83,8 +125,13 @@ const doc = DOMParser.fromSchema(schema).parse(contentElement);
 let state = EditorState.create({
   doc,
   plugins: [
-    columnResizing(),
-    tableEditing(),
+    columnResizing({
+      lastColumnResizable: true,
+      handleWidth: 10,
+      cellMinWidth: 20,
+      wrapperClassNames: ['lololo']
+    }),
+    tableEditing({allowTableNodeSelection: true}), // key binding 을 위해 tableEditing 을 마지막에 추가합니다.
     keymap({
       Tab: goToNextCell(1),
       'Shift-Tab': goToNextCell(-1),
@@ -92,6 +139,7 @@ let state = EditorState.create({
   ].concat(
     exampleSetup({
       schema,
+      // @ts-expect-error: prosemirror-example-setup exports wrong types here.
       menuContent: menu,
     }),
   ),
@@ -99,9 +147,27 @@ let state = EditorState.create({
 const fix = fixTables(state);
 if (fix) state = state.apply(fix.setMeta('addToHistory', false));
 
-(window as any).view = new EditorView(document.querySelector('#editor'), {
+const view = new EditorView(document.querySelector('#editor'), {
   state,
+  dispatchTransaction(transaction) {
+    const newState = view.state.apply(transaction);
+    view.updateState(newState);
+    const serializer = DOMSerializer.fromSchema(schema)
+    const html = serializer.serializeFragment(newState.doc.content)
+    const preview = document.querySelector('#preview')
+    if (preview) {
+      preview.innerHTML = ''
+      preview.append(html)
+    }
+  }
 });
+(window as any).view = view
+const serializer = DOMSerializer.fromSchema(schema)
+const html = serializer.serializeFragment(state.doc.content)
+const preview = document.querySelector('#preview')
+if (preview) {
+  preview.append(html)
+}
 
 document.execCommand('enableObjectResizing', false, 'false');
 document.execCommand('enableInlineTableEditing', false, 'false');

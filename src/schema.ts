@@ -134,10 +134,34 @@ export function tableNodes(options: TableNodesOptions): TableNodes {
       content: 'table_row+',
       tableRole: 'table',
       isolating: true,
+      attrs: {
+        width: {
+          default: null,
+        },
+        defaultWidth: {
+          default: null,
+        },
+        'data-layout': {
+          default: 'auto'
+        }
+      },
       group: options.tableGroup,
       parseDOM: [{ tag: 'table' }],
-      toDOM() {
-        return ['table', ['tbody', 0]];
+      toDOM(node) {
+        return [
+          'div',
+          { 
+            style: 'overflow-x: auto;'
+          },
+          [
+            'table',
+            {
+              ...node.attrs,
+              style: node.attrs.width ? `width: ${node.attrs.width}px;` : '',
+            },
+            ['tbody', 0]
+          ]
+        ];
       },
     },
     table_row: {

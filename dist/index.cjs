@@ -428,10 +428,33 @@ function tableNodes(options) {
       content: "table_row+",
       tableRole: "table",
       isolating: true,
+      attrs: {
+        width: {
+          default: null
+        },
+        defaultWidth: {
+          default: null
+        },
+        "data-layout": {
+          default: "auto"
+        }
+      },
       group: options.tableGroup,
       parseDOM: [{ tag: "table" }],
-      toDOM() {
-        return ["table", ["tbody", 0]];
+      toDOM(node) {
+        return [
+          "div",
+          {
+            style: "overflow-x: auto;"
+          },
+          [
+            "table",
+            __spreadProps(__spreadValues({}, node.attrs), {
+              style: node.attrs.width ? `width: ${node.attrs.width}px;` : ""
+            }),
+            ["tbody", 0]
+          ]
+        ];
       }
     },
     table_row: {
@@ -1526,10 +1549,14 @@ var import_prosemirror_view2 = require("prosemirror-view");
 
 // src/tableview.ts
 var TableView = class {
-  constructor(node, cellMinWidth, wrapperClassNames) {
+  constructor(node, cellMinWidth, wrapperClassNames, view, getPos) {
     this.node = node;
     this.cellMinWidth = cellMinWidth;
     this.wrapperClassNames = wrapperClassNames;
+    this.view = view;
+    this.getPos = getPos;
+    this.view = view;
+    this.getPos = getPos;
     this.dom = document.createElement("div");
     this.dom.className = "tableWrapper";
     wrapperClassNames.forEach((className) => this.dom.classList.add(className));
@@ -1538,6 +1565,9 @@ var TableView = class {
     this.colgroup = this.table.appendChild(document.createElement("colgroup"));
     updateColumnsOnResize(node, this.colgroup, this.table, cellMinWidth);
     this.contentDOM = this.table.appendChild(document.createElement("tbody"));
+    setTimeout(() => {
+      this.view.dispatch(this.view.state.tr.setNodeAttribute(this.getPos(), "defaultWidth", this.table.offsetWidth).setMeta("addToHistory", false));
+    }, 0);
   }
   update(node) {
     if (node.type != this.node.type)
@@ -1609,7 +1639,7 @@ function columnResizing({
     key: columnResizingPluginKey,
     state: {
       init(_, state) {
-        plugin.spec.props.nodeViews[tableNodeTypes(state.schema).table.name] = (node) => new View(node, cellMinWidth, wrapperClassNames);
+        plugin.spec.props.nodeViews[tableNodeTypes(state.schema).table.name] = (node, view, getPos) => new View(node, cellMinWidth, wrapperClassNames, view, getPos);
         return new ResizeState(-1, false);
       },
       apply(tr, prev) {
@@ -1809,8 +1839,12 @@ function updateColumnWidth(view, cell, width) {
     colwidth[index] = width;
     tr.setNodeMarkup(start + pos, null, __spreadProps(__spreadValues({}, attrs), { colwidth }));
   }
-  if (tr.docChanged)
+  if (tr.docChanged) {
+    const defaultTableWidth = table.attrs.defaultWidth || 0;
+    const resizedTableWidth = view.domAtPos(start).node.closest("table").offsetWidth - 1;
     view.dispatch(tr);
+    defaultTableWidth >= resizedTableWidth ? view.dispatch(view.state.tr.setNodeAttribute(start - 1, "width", null).setNodeAttribute(start - 1, "data-layout", "auto").setMeta("addToHistory", false)) : view.dispatch(view.state.tr.setNodeAttribute(start - 1, "width", resizedTableWidth).setNodeAttribute(start - 1, "data-layout", "fixed").setMeta("addToHistory", false));
+  }
 }
 function displayColumnWidth(view, cell, width, cellMinWidth) {
   const $cell = view.state.doc.resolve(cell);
