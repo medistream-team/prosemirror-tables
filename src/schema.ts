@@ -141,7 +141,7 @@ export function tableNodes(options: TableNodesOptions): TableNodes {
         defaultWidth: {
           default: null,
         },
-        layout: {
+        'data-layout': {
           default: 'auto'
         }
       },
